@@ -9,12 +9,14 @@
 /* global module */
 
 if((typeof module) !== 'undefined') {
-    nerdamer = require('./nerdamer.core.js');
+    var nerdamer = require('./nerdamer.core.js');
     require('./Calculus');
     require('./Algebra');
 }
 
 (function(){
+    "use strict";
+    
     var core = nerdamer.getCore(),
         _ = core.PARSER,
         Symbol = core.Symbol,

@@ -7,7 +7,7 @@
 /* global module */
 
 if((typeof module) !== 'undefined') {
-    nerdamer = require('./nerdamer.core.js');
+    var nerdamer = require('./nerdamer.core.js');
     require('./Calculus.js');
     require('./Algebra.js');
 }
@@ -47,6 +47,8 @@ if((typeof module) !== 'undefined') {
     core.Settings.ROOTS_PER_SIDE = 5;
     // Covert the number to multiples of pi if possible
     core.Settings.make_pi_conversions = true;
+    // The step size
+    core.Settings.STEP_SIZE = 0.1;
     
     core.Symbol.prototype.hasTrig = function() {
         return this.containsFunction(['cos', 'sin', 'tan', 'cot', 'csc', 'sec']);
@@ -255,9 +257,20 @@ if((typeof module) !== 'undefined') {
         // Use M^-1*c to solve system
         m = m.invert();
         var result = m.multiply(c);
-        var solutions = [];
+        //correct the sign as per issue #410
+        if(core.Utils.isArray(var_array))
+            result.each(function(x) {
+                return x.negate();
+            });
+        var solutions = core.Settings.SOLUTIONS_AS_OBJECT ? {} : [];
         result.each(function(e, idx) { 
-            solutions.push([vars[idx], (expand_result ? _.expand(e) : e).valueOf()]); 
+            var solution = (expand_result ? _.expand(e) : e).valueOf();
+            var variable = vars[idx];
+            if(core.Settings.SOLUTIONS_AS_OBJECT) {
+                solutions[variable] = solution;
+            }
+            else
+                solutions.push([variable, solution]); 
         });
         //done
         return solutions;
@@ -389,7 +402,8 @@ if((typeof module) !== 'undefined') {
         return new core.Vector(solutions);
     };
     
-    var get_points = function(symbol) {  
+    var get_points = function(symbol, step) {  
+        step = step || 0.1;
         var f = build(symbol);
         var start = Math.round(f(0)),
             last = f(start),
@@ -407,8 +421,8 @@ if((typeof module) !== 'undefined') {
         // Possible issue #1. If the step size exceeds the zeros then they'll be missed. Consider the case
         // where the function dips to negative and then back the positive with a step size of 0.1. The function
         // will miss the zeros because it will jump right over it. Think of a case where this can happen.
-        for(var i=start; i<core.Settings.SOLVE_RADIUS; i++){
-            var val = f(i*0.1),
+        for(var i=start; (i)<core.Settings.SOLVE_RADIUS; i++){
+            var val = f(i*step),
                 sign = val/Math.abs(val);
             if(isNaN(val) || !isFinite(val) || points.length > rside)
                 break;
@@ -468,11 +482,13 @@ if((typeof module) !== 'undefined') {
             if(eqns.isZero())
                 return [new Symbol(0)];
             //if the lhs = x then we're done
-            if(eqns.LHS.equals(solve_for))
+            if(eqns.LHS.equals(solve_for) && !eqns.RHS.contains(solve_for)) {
                 return [eqns.RHS];
+            }
             //if the rhs = x then we're done
-            if(eqns.RHS.equals(solve_for))
+            if(eqns.RHS.equals(solve_for) && !eqns.LHS.contains(solve_for)) {
                 return [eqns.LHS];
+            }
         }
         //unwrap the vector since what we want are the elements
         if(eqns instanceof core.Vector)
@@ -536,7 +552,10 @@ if((typeof module) !== 'undefined') {
         var attempt_Newton = function(symbol) { 
             var has_trig = symbol.hasTrig();
             // we get all the points where a possible zero might exist
-            var points = get_points(symbol),
+            var points1 = get_points(symbol, 0.1);
+            var points2 = get_points(symbol, 0.05);
+            var points3 = get_points(symbol, 0.01);
+            var points = core.Utils.arrayUnique(points1.concat(points2).concat(points3)),
                 l = points.length;
             //compile the function and the derivative of the function
             var f = build(symbol.clone()),
@@ -741,13 +760,15 @@ if((typeof module) !== 'undefined') {
                         else if(deg === 3)
                             add_to_result(cubic.apply(undefined, coeffs));
                         else {
+                            /*
                             var sym_roots = csolve(eq, solve_for); 
                             if(sym_roots.length === 0)
                                 sym_roots = divnconsolve(eq, solve_for);
-                            if(sym_roots.length > 0)
+                            if(sym_roots.length > 0) 
                                 add_to_result(sym_roots);
                             else
-                                _A.proots(eq).map(add_to_result);
+                            */
+                            _A.proots(eq).map(add_to_result);
                         }
                     }
                             
@@ -887,9 +908,11 @@ if((typeof module) !== 'undefined') {
             visible: true,
             build: function(){ 
                 return solve; //comment out to return a vector
-                return function() {
+                /*
+                 return function() {
                     return core.Utils.convertToVector(solve.apply(null, arguments));
                 };
+                */
             }
         },
         {

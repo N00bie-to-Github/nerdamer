@@ -319,6 +319,21 @@ describe('Nerdamer core', function () {
         for(var i=0; i<formulas.length; i++)
             expect(function (){ nerdamer(formulas[i]) }).toThrowError();
     });   
+    it('should set postfix operators correctly', function () {
+        var core = nerdamer.getCore();
+        var _ = core.PARSER;
+        var Symbol = core.Symbol;
+        nerdamer.setOperator({
+            precedence: 4,
+            operator: '°',
+            postfix: true,
+            operation: function(x){ 
+                return _.divide(_.multiply(x, new Symbol('pi')), new Symbol(180)); 
+            }
+        });
+        
+        expect(nerdamer('x+1°+π+x').toString()).toEqual('(181/180)*pi+2*x');
+    });  
     it('should correctly calculate Infinity', function () {
         // given
         var testCases = [
@@ -676,6 +691,43 @@ describe('Nerdamer core', function () {
             expect(value).toEqual(testCases[i].expectedValue);
         }
     });   
+    it('should compute symbolic factorials', function () {
+        // given
+       var testCases = [
+           {
+               given: '(-1/2)!',
+               expected: 'sqrt(pi)'
+           },
+           {
+               given: '(-7/2)!',
+               expected: '(-8/15)*sqrt(pi)'
+           },
+           {
+               given: '(-9/2)!',
+               expected: '(16/105)*sqrt(pi)'
+           },
+           {
+               given: '(9/2)!',
+               expected: '(945/32)*sqrt(pi)'
+           },
+           {
+               given: '(7/2)!',
+               expected: '(105/16)*sqrt(pi)'
+           },
+           {
+               given: '(1/2)!',
+               expected: '(1/2)*sqrt(pi)'
+           }
+       ];
+
+        for (var i = 0; i < testCases.length; ++i) {
+            // when
+            var parsed = nerdamer(testCases[i].given);
+
+            // then
+            expect(parsed.toString()).toEqual(testCases[i].expected);
+        }
+    });   
     it('should handle square roots', function () {
         // given
         var testCases = [
@@ -742,7 +794,7 @@ describe('Nerdamer core', function () {
             {
                 given: 'sqrt(-x)',
                 expected: 'sqrt(-x)',
-                expectedValue: '1.449137674618944*i'
+                expectedValue: '1.4491376746189437*i'
             },
             {
                 given: 'sqrt(-x)*sqrt(-x)',
@@ -821,6 +873,28 @@ describe('Nerdamer core', function () {
             expect(value).toEqual(testCases[i].expectedValue);
         }
     });
+    it('expand square roots', function () {
+        // given
+        var testCases = [
+            {
+                given: '(sqrt(7)+3sqrt(2))*(sqrt(7)-3sqrt(2))',
+                expected: '-11'
+            },
+            {
+                given: 'sqrt(33)*sqrt(11)',
+                expected: '11*sqrt(3)'
+            },
+        ];
+
+        for (var i = 0; i < testCases.length; ++i) {
+            // when
+            var parsed = nerdamer(testCases[i].given).expand();
+
+            // then
+            expect(parsed.toString()).toEqual(testCases[i].expected);
+        }
+    });
+    
     it('should support the imaginary number i', function () {
         // given
         var testCases = [
@@ -1100,6 +1174,31 @@ describe('Nerdamer core', function () {
 
             // then
             expect(value).toEqual(testCases[i].expected);
+        }
+    });
+    it('should support continued fractions', function () {
+        // given
+        var testCases = [
+            {
+                given: 'continued_fraction(2.145474, 11)',
+                expected: '[1,2,[6,1,6,1,16,8,2,1,3,2]]'
+            },
+            {
+                given: 'continued_fraction(-6/7)',
+                expected: '[-1,0,[1,6]]'
+            },
+            {
+                given: 'continued_fraction(sqrt(2), 5)',
+                expected: '[1,1,[2,2,2,2,2]]'
+            }
+        ];
+
+        for (var i = 0; i < testCases.length; ++i) {
+            // when
+            var parsed = nerdamer(testCases[i].given);
+
+            // then
+            expect(parsed.toString()).toEqual(testCases[i].expected);
         }
     });
     /** #35 #76: Support multiple minus signs and brackets */

@@ -277,6 +277,10 @@ describe('TeX features', function () {
           given: 'integrate(cos(x),x)',
           expected: '\\int {\\mathrm{cos}\\left(x\\right)}\\, dx'
         },
+        {
+          given: '2*(sqrt(3)+sqrt(2))',
+          expected: '2 \\cdot \\left(\\sqrt{3} + \\sqrt{2}\\right)'
+        }
       ];
 
       for (var i = 0; i < testCases.length; ++i) {
